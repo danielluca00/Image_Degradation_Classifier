@@ -5,13 +5,21 @@ from PIL import Image
 from pathlib import Path
 from tqdm import tqdm
 import random
+from sklearn.model_selection import train_test_split
 
-# --- Configurazione ---
-input_dir = "./clean_images"        # cartella con immagini clean
-output_dir = "./dataset"                # cartella dove salvare il dataset generato
-img_size = (256, 256)                   # ridimensiona tutte le immagini
+# =========================================================
+#                 CONFIGURAZIONE
+# =========================================================
+input_dir = "./few_clean_images"          # cartella immagini clean
+output_dir = "./dataset"              # cartella finale dataset
+img_size = (256, 256)
 
-# Tipi di degradazioni finali
+# Split del dataset
+train_ratio = 0.7
+val_ratio = 0.15
+test_ratio = 0.15
+
+# Classi finali del dataset
 degradations = [
     "clean",
     "blur",
@@ -25,10 +33,12 @@ degradations = [
     "color_distortion"
 ]
 
-# --- Funzioni di degradazione dinamiche ---
+# =========================================================
+#         FUNZIONI DI DEGRADAZIONE DINAMICHE
+# =========================================================
 def apply_blur(img):
-    k = random.choice([3,5,7,9])
-    return cv2.GaussianBlur(img, (k,k), 0)
+    k = random.choice([3, 5, 7, 9])
+    return cv2.GaussianBlur(img, (k, k), 0)
 
 def apply_noise(img):
     std = random.uniform(10, 50)
@@ -44,13 +54,12 @@ def apply_jpeg(img):
     quality = random.randint(10, 50)
     encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), quality]
     _, encimg = cv2.imencode(".jpg", img, encode_param)
-    decimg = cv2.imdecode(encimg, 1)
-    return decimg
+    return cv2.imdecode(encimg, 1)
 
 def apply_pixelation(img):
     h, w = img.shape[:2]
     factor = random.randint(4, 16)
-    temp = cv2.resize(img, (w//factor, h//factor), interpolation=cv2.INTER_LINEAR)
+    temp = cv2.resize(img, (w // factor, h // factor), interpolation=cv2.INTER_LINEAR)
     return cv2.resize(temp, (w, h), interpolation=cv2.INTER_NEAREST)
 
 def apply_motion_blur(img):
@@ -59,7 +68,7 @@ def apply_motion_blur(img):
     kernel = np.zeros((k, k))
     kernel[int((k-1)/2), :] = np.ones(k)
     kernel = cv2.warpAffine(kernel, cv2.getRotationMatrix2D((k/2, k/2), angle, 1.0), (k, k))
-    kernel = kernel / np.sum(kernel)
+    kernel /= np.sum(kernel)
     return cv2.filter2D(img, -1, kernel)
 
 def apply_high_light(img):
@@ -73,35 +82,65 @@ def apply_low_contrast(img):
     return np.clip(alpha * img + (1 - alpha) * mean, 0, 255).astype(np.uint8)
 
 def apply_color_distortion(img):
-    factors = np.random.uniform(0.6, 1.4, size=(1,1,3))
+    factors = np.random.uniform(0.6, 1.4, size=(1, 1, 3))
     distorted = img.astype(np.float32) * factors
     return np.clip(distorted, 0, 255).astype(np.uint8)
 
-# --- Preparazione cartelle ---
-for d in degradations:
-    Path(os.path.join(output_dir, d)).mkdir(parents=True, exist_ok=True)
+# Mappa delle funzioni
+degradation_funcs = {
+    "clean": lambda x: x,
+    "blur": apply_blur,
+    "noise": apply_noise,
+    "low_light": apply_low_light,
+    "jpeg": apply_jpeg,
+    "pixelation": apply_pixelation,
+    "motion_blur": apply_motion_blur,
+    "high_light": apply_high_light,
+    "low_contrast": apply_low_contrast,
+    "color_distortion": apply_color_distortion
+}
 
-# --- Generazione dataset ---
-for img_name in tqdm(os.listdir(input_dir)):
-    img_path = os.path.join(input_dir, img_name)
-    img = cv2.imread(img_path)
-    if img is None:
-        continue
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    img = cv2.resize(img, img_size)
+# =========================================================
+#           CARICAMENTO IMMAGINI CLEAN
+# =========================================================
+all_clean_images = [f for f in os.listdir(input_dir) if f.lower().endswith((".jpg",".jpeg",".png"))]
+print(f"Trovate {len(all_clean_images)} clean_images.")
 
-    # salva immagine clean
-    Image.fromarray(img).save(os.path.join(output_dir, "clean", img_name))
+# Split train/val/test sulle clean images
+train_imgs, temp_imgs = train_test_split(all_clean_images, test_size=(1-train_ratio), random_state=42)
+val_imgs, test_imgs = train_test_split(temp_imgs, test_size=(test_ratio/(test_ratio+val_ratio)), random_state=42)
 
-    # applica e salva tutte le degradazioni
-    Image.fromarray(apply_blur(img)).save(os.path.join(output_dir, "blur", img_name))
-    Image.fromarray(apply_noise(img)).save(os.path.join(output_dir, "noise", img_name))
-    Image.fromarray(apply_low_light(img)).save(os.path.join(output_dir, "low_light", img_name))
-    Image.fromarray(apply_jpeg(img)).save(os.path.join(output_dir, "jpeg", img_name))
-    Image.fromarray(apply_pixelation(img)).save(os.path.join(output_dir, "pixelation", img_name))
-    Image.fromarray(apply_motion_blur(img)).save(os.path.join(output_dir, "motion_blur", img_name))
-    Image.fromarray(apply_high_light(img)).save(os.path.join(output_dir, "high_light", img_name))
-    Image.fromarray(apply_low_contrast(img)).save(os.path.join(output_dir, "low_contrast", img_name))
-    Image.fromarray(apply_color_distortion(img)).save(os.path.join(output_dir, "color_distortion", img_name))
+splits = {
+    "train": train_imgs,
+    "val": val_imgs,
+    "test": test_imgs
+}
 
-print("Dataset sintetico generato con successo!")
+# =========================================================
+#       CREAZIONE CARTELLE dataset/train/class/
+# =========================================================
+for split in splits.keys():
+    for d in degradations:
+        Path(f"{output_dir}/{split}/{d}").mkdir(parents=True, exist_ok=True)
+
+# =========================================================
+#              GENERAZIONE IMMAGINI
+# =========================================================
+for split, img_list in splits.items():
+    print(f"\nGenerazione split: {split} ({len(img_list)} immagini clean)")
+
+    for img_name in tqdm(img_list):
+        img_path = os.path.join(input_dir, img_name)
+        img = cv2.imread(img_path)
+        if img is None:
+            continue
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = cv2.resize(img, img_size)
+
+        # Genera per ogni classe
+        for cls in degradations:
+            transformed = degradation_funcs[cls](img)
+            save_path = f"{output_dir}/{split}/{cls}/{img_name}"
+            Image.fromarray(transformed).save(save_path)
+
+print("\nDataset creato e suddiviso in train/val/test con successo!")
