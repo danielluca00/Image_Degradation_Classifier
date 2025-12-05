@@ -1,10 +1,39 @@
 import os
+import sys
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms, models
-import matplotlib.pyplot as plt
+from datetime import datetime
+
+# ===============================
+# AUTO-LOGGING: salva tutto l’output su file
+# ===============================
+LOG_DIR = "logs"
+os.makedirs(LOG_DIR, exist_ok=True)
+
+log_filename = datetime.now().strftime("training_%Y-%m-%d_%H-%M-%S.log")
+log_path = os.path.join(LOG_DIR, log_filename)
+
+class Logger:
+    def __init__(self, file_path):
+        self.terminal = sys.stdout
+        self.log = open(file_path, "a", encoding="utf-8")
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)
+        self.log.flush()
+
+    def flush(self):
+        self.terminal.flush()
+        self.log.flush()
+
+# attiva logging globale
+sys.stdout = Logger(log_path)
+
+print(f"📄 Logging attivo → {log_path}")
 
 # ===============================
 # CONFIGURAZIONE
@@ -51,7 +80,7 @@ print("Classes:", train_ds.classes)
 # MODEL: ResNet18 (Transfer Learning)
 # ===============================
 model = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
-model.fc = nn.Linear(model.fc.in_features, NUM_CLASSES)   # replace final layer
+model.fc = nn.Linear(model.fc.in_features, NUM_CLASSES)
 model = model.to(DEVICE)
 
 criterion = nn.CrossEntropyLoss()
@@ -87,8 +116,10 @@ def evaluate(loader):
     with torch.no_grad():
         for images, labels in loader:
             images, labels = images.to(DEVICE), labels.to(DEVICE)
+
             outputs = model(images)
             _, preds = torch.max(outputs, 1)
+
             correct += (preds == labels).sum().item()
             total += labels.size(0)
 
@@ -117,4 +148,6 @@ print("Training finished.")
 # ===============================
 model.load_state_dict(torch.load(MODEL_SAVE))
 test_acc = evaluate(test_loader)
-print(f"\n🎉 FINAL TEST ACCURACY: {test_acc*100:.2f}%")
+print(f"\n🎉 FINAL TEST ACCURACY: {test_acc*100:.2f}%\n")
+
+print(f"📄 Log salvato in: {log_path}")
