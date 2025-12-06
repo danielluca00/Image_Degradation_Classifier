@@ -4,9 +4,9 @@ import shutil
 from pathlib import Path
 
 IMAGENET_DIR = r"C:\Users\dani2\Downloads\archive"  # Cartella radice delle classi
-OUTPUT_DIR = "./few_clean_images"   # Dove copiare le immagini
-NUM_CLASSES = 10
-IMAGES_PER_CLASS = 2
+OUTPUT_DIR = "./clean_images"   # Dove copiare le immagini
+NUM_CLASSES = 100
+IMAGES_PER_CLASS = 20
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 

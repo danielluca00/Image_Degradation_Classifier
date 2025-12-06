@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split
 # =========================================================
 #                 CONFIGURAZIONE
 # =========================================================
-input_dir = "./few_clean_images"          # cartella immagini clean
+input_dir = "./clean_images"          # cartella immagini clean
 output_dir = "./dataset"              # cartella finale dataset
 img_size = (256, 256)
 
