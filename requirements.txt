@@ -7,3 +7,5 @@ torch
 torchvision
 torchaudio
 matplotlib
+seaborn
+pandas

@@ -70,6 +70,7 @@ results/
 *.txt
 *.log
 training_log.txt
+runs/
 
 # =============================
 # === Misc / Backup
