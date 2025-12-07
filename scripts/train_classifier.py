@@ -45,6 +45,23 @@ sys.stdout = Logger(log_path)
 print(f"📄 Logging attivo → {log_path}")
 
 # ==========================================================
+# TIMER FORMATTER
+# ==========================================================
+def format_time(seconds):
+    seconds = int(seconds)
+    h = seconds // 3600
+    m = (seconds % 3600) // 60
+    s = seconds % 60
+    
+    if h > 0:
+        return f"{h}h {m}m {s}s"
+    elif m > 0:
+        return f"{m}m {s}s"
+    else:
+        return f"{s}s"
+
+
+# ==========================================================
 # CONFIG
 # ==========================================================
 DATASET_DIR = "./dataset"
@@ -64,6 +81,7 @@ print("Using device:", DEVICE)
 train_transform = transforms.Compose([
     transforms.Resize((256,256)),
     transforms.RandomHorizontalFlip(),
+    transforms.RandomVerticalFlip(),
     transforms.RandomRotation(10),
     transforms.ToTensor(),
 ])
@@ -171,7 +189,7 @@ for epoch in range(1, NUM_EPOCHS + 1):
 
     print(f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc*100:.2f}%")
     print(f"Val   Loss: {val_loss:.4f} | Val   Acc: {val_acc*100:.2f}%")
-    print(f"⏱️  Tempo epoca: {epoch_duration:.2f} sec")
+    print(f"⏱️  Tempo epoca: {format_time(epoch_duration)} sec")
 
     if val_acc > best_val_acc:
         torch.save(model.state_dict(), MODEL_SAVE)
@@ -187,7 +205,7 @@ for epoch in range(1, NUM_EPOCHS + 1):
             break
 
 training_total_time = time.time() - training_start_time
-print(f"\n⏱️ Tempo totale di training: {training_total_time:.2f} sec")
+print(f"\n⏱️ Tempo totale di training: {format_time(training_total_time)} sec")
 print("\nTraining terminato.\n")
 
 # ==========================================================
