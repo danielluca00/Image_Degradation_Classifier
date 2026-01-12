@@ -2,23 +2,62 @@
 
 ## Overview
 
-This project implements a **deep learning-based image degradation classifier**, capable of automatically detecting the type of degradation affecting an input image.  
+This repository implements a **deep learning–based image degradation classifier** that identifies the **dominant degradation** affecting an image.
 
-The classifier can recognize multiple types of degradation, such as:
+The model performs **multi-class, single-label classification** and is intended as a **pre-processing step** for image enhancement or restoration pipelines.
 
-- Blur  
-- Gaussian Noise  
-- Low Light  
-- JPEG Artifacts  
-- Pixelation  
-- Clean images (no degradation)  
+---
 
-Once trained, the classifier can be used as a **pre-processing step** for image enhancement or restoration pipelines, selecting the appropriate enhancement method based on the detected degradation.
+## Supported Degradation Classes
 
-The repository includes the full pipeline, including:
+The classifier predicts one of the following classes:
 
-1. **Dataset generation** – create synthetic degraded images from clean images for training and validation.  
-2. **Data loaders** – for efficiently feeding images to the network.  
-3. **Model architecture** – a convolutional neural network (e.g., ResNeXt50) fine-tuned for multi-class degradation classification.  
-4. **Training scripts** – to train the classifier on synthetic or real-world datasets.  
-5. **Inference scripts** – to classify new images and optionally output visual reports or degradation probabilities.  
+- `blur`
+- `motion_blur`
+- `noise`
+- `jpeg`
+- `pixelation`
+- `low_light`
+- `high_light`
+- `low_contrast`
+- `color_distortion`
+- `clean`
+
+---
+
+## Model
+
+- Backbone: **ResNet-18** (ImageNet pretrained)
+- Input size: **256 × 256**
+- Loss: Cross-Entropy
+- Optimizer: Adam
+
+The model is lightweight and can be used for **CPU inference** and **GPU training**.
+
+---
+
+## How to Run
+
+### 1. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+### 2. Select clean images from ImageNet
+Extract a subset of clean images from ImageNet to be used as a base dataset:
+```bash
+python scripts/select_clean_images.py
+```
+### 3. Generate the degradation dataset
+Generate a complete dataset with synthetic degradations, automatically split into train, validation, and test sets:
+```bash
+python scripts/generate_dataset.py
+```
+### 4. Train the classifier
+```bash
+python scripts/train_classifier.py
+```
+### 5. Run inference
+```bash
+python scripts/inference.py
+```
